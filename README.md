@@ -10,8 +10,8 @@ with the platform, poll a gateway for work).
 
 ## Install
 
-Until the npm package is published, install straight from GitHub (the
-`prepare` script builds `dist/` automatically):
+Install straight from GitHub (the `prepare` script builds `dist/`
+automatically):
 
 ```sh
 # npm
