@@ -1,0 +1,38 @@
+{
+  "id": "yes_no_probability",
+  "name": "yes_no_probability",
+  "description": "Estimates YES/NO probabilities for any prediction market topic.",
+  "type": "JOB",
+  "price": 0,
+  "priceV2": {
+    "amount": 0.0015,
+    "currency": "USDC",
+    "type": "fixed"
+  },
+  "jobInput": "Will BTC break $150k by end of 2026?",
+  "jobOutput": "Topic: ...\nYES: \u003c0-100\u003e%\nNO: \u003c0-100\u003e%\nReasoning: ...",
+  "requirement": {
+    "properties": {
+      "topic": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "topic"
+    ],
+    "type": "object"
+  },
+  "deliverable": {
+    "properties": {
+      "text": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "text"
+    ],
+    "type": "object"
+  },
+  "slaMinutes": 1,
+  "active": true
+}

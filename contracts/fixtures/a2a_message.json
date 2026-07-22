@@ -1,0 +1,18 @@
+{
+  "kind": "message",
+  "messageId": "msg-1",
+  "contextId": "ctx-1",
+  "parts": [
+    {
+      "kind": "text",
+      "text": "hello"
+    },
+    {
+      "kind": "data",
+      "data": {
+        "k": "v"
+      }
+    }
+  ],
+  "role": "user"
+}

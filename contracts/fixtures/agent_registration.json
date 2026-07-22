@@ -1,0 +1,186 @@
+{
+  "card": {
+    "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+    "name": "Prediction Market Agent",
+    "description": "Estimates YES/NO probabilities.",
+    "url": "http://localhost:8000/agents/prediction_market_demo/",
+    "x402support": true,
+    "active": true,
+    "version": "1.0.0",
+    "services": [
+      {
+        "name": "A2A",
+        "endpoint": "http://localhost:8000/agents/prediction_market_demo",
+        "a2aSkills": [
+          "YES/NO Probability"
+        ]
+      },
+      {
+        "name": "web",
+        "endpoint": "http://localhost:8000/agents/prediction_market_demo/"
+      }
+    ],
+    "registrations": null,
+    "supportedTrust": [
+      "reputation",
+      "crypto-economic",
+      "tee-attestation"
+    ],
+    "metadata": {
+      "mode": "private",
+      "version": "1.0.0"
+    },
+    "provider": {
+      "organization": "BitAgent",
+      "url": "https://bitagent.io"
+    },
+    "capabilities": {
+      "streaming": false,
+      "pushNotifications": false,
+      "stateTransitionHistory": false
+    },
+    "authentication": {
+      "schemes": [
+        "Bearer"
+      ]
+    },
+    "defaultInputModes": [
+      "text/plain"
+    ],
+    "defaultOutputModes": [
+      "application/json"
+    ],
+    "skills": [
+      {
+        "id": "prediction_market_demo_YES/NO Probability",
+        "name": "YES/NO Probability",
+        "description": "Estimate the YES/NO probability of any topic.",
+        "tags": [
+          "streaming"
+        ],
+        "inputModes": [
+          "text/plain"
+        ],
+        "outputModes": [
+          "application/json"
+        ]
+      }
+    ],
+    "jobOfferings": [
+      {
+        "id": "yes_no_probability",
+        "name": "yes_no_probability",
+        "description": "Estimates YES/NO probabilities for any prediction market topic.",
+        "type": "JOB",
+        "price": 0,
+        "priceV2": {
+          "amount": 0.0015,
+          "currency": "USDC",
+          "type": "fixed"
+        },
+        "jobInput": "Will BTC break $150k by end of 2026?",
+        "jobOutput": "Topic: ...\nYES: \u003c0-100\u003e%\nNO: \u003c0-100\u003e%\nReasoning: ...",
+        "requirement": {
+          "properties": {
+            "topic": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "topic"
+          ],
+          "type": "object"
+        },
+        "deliverable": {
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "type": "object"
+        },
+        "slaMinutes": 1,
+        "active": true
+      }
+    ],
+    "jobResources": null,
+    "trustModels": [
+      "feedback",
+      "inference-validation",
+      "tee-attestation"
+    ]
+  },
+  "chain_id": 97,
+  "cost_model": {
+    "base_call_fee": 0.0015,
+    "custom_fees": {}
+  },
+  "endpoint_url": "",
+  "handle": "prediction_market_demo",
+  "jobOfferings": [
+    {
+      "id": "yes_no_probability",
+      "name": "yes_no_probability",
+      "description": "Estimates YES/NO probabilities for any prediction market topic.",
+      "type": "JOB",
+      "price": 0,
+      "priceV2": {
+        "amount": 0.0015,
+        "currency": "USDC",
+        "type": "fixed"
+      },
+      "jobInput": "Will BTC break $150k by end of 2026?",
+      "jobOutput": "Topic: ...\nYES: \u003c0-100\u003e%\nNO: \u003c0-100\u003e%\nReasoning: ...",
+      "requirement": {
+        "properties": {
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic"
+        ],
+        "type": "object"
+      },
+      "deliverable": {
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "slaMinutes": 1,
+      "active": true
+    }
+  ],
+  "jobResources": [],
+  "metadata": {
+    "mode": "private",
+    "version": "1.0.0"
+  },
+  "price": {
+    "amount": 0.0015,
+    "currency": "USD"
+  },
+  "skills": [
+    {
+      "description": "Estimate the YES/NO probability of any topic.",
+      "inputs": [],
+      "name": "YES/NO Probability",
+      "outputs": []
+    }
+  ],
+  "tasks": [
+    {
+      "description": "Estimate the YES/NO probability of any topic.",
+      "name": "YES/NO Probability"
+    }
+  ]
+}

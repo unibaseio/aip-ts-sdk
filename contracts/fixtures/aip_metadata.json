@@ -1,0 +1,12 @@
+{
+  "caller_chain": [
+    "user:0xabc"
+  ],
+  "caller_id": "user:0xabc",
+  "conversation_id": "conv-1",
+  "custom": {
+    "topic": "Will BTC break $150k?"
+  },
+  "payment_authorized": true,
+  "run_id": "run-123"
+}
