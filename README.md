@@ -24,7 +24,9 @@ yarn add unibaseio/aip-ts-sdk
 yarn add aip-ts-sdk@git+https://github.com/unibaseio/aip-ts-sdk.git#main
 ```
 
-Requires Node.js 20+.
+Requires Node.js 20+. The SDK is ESM-only — set `"type": "module"` in your
+project's package.json (`npm pkg set type=module`), which also enables the
+top-level `await` used in the examples.
 
 ## Modules
 
