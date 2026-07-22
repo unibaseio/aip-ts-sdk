@@ -10,8 +10,18 @@ with the platform, poll a gateway for work).
 
 ## Install
 
+Until the npm package is published, install straight from GitHub (the
+`prepare` script builds `dist/` automatically):
+
 ```sh
-npm install aip-ts-sdk
+# npm
+npm install github:unibaseio/aip-ts-sdk
+
+# yarn (v1)
+yarn add unibaseio/aip-ts-sdk
+
+# yarn berry / pin a branch
+yarn add aip-ts-sdk@git+https://github.com/unibaseio/aip-ts-sdk.git#main
 ```
 
 Requires Node.js 20+.
