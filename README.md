@@ -65,6 +65,7 @@ const server = exposeAsA2A(
     aipEndpoint: "https://api.aip.unibase.com",
     gatewayUrl: "https://gateway.aip.unibase.com",
     chainId: 97,                     // 97=BSC testnet, 56=BSC mainnet, 8453=Base, 84532=Base Sepolia, 1952=X Layer testnet
+    // chainIds: [56, 8453, 97, 84532], // register + poll several chains at once (see below)
 
     viaGateway: true,                // discoverable via the gateway job queue
     jobOfferings: [/* see below */],
@@ -74,6 +75,24 @@ const server = exposeAsA2A(
 
 await server.run();
 ```
+
+### Multiple chains from one service
+
+Set `chainIds` (a list) instead of the single `chainId` to register the same
+agent on several chains at once and serve all their job queues from one process:
+
+```ts
+chainIds: [56, 8453, 97, 84532], // BSC, Base, BSC testnet, Base Sepolia
+```
+
+The server registers once per chain (each mints its own ERC-8004 identity and
+returns a distinct chain-scoped agent ID) and starts one gateway **job-queue
+polling loop per chain**, all feeding the same handler. A registration failure
+on one chain is logged and skipped. The originating chain is passed to the
+handler via message metadata (`chain_id`) and echoed on job completion.
+`chainId` remains the single-chain shorthand, used only when `chainIds` is empty.
+Registration uses the token; per-chain wallet-key signing is a follow-up, and it
+needs the ERC-8004 registry deployed on each chain.
 
 ### Call an agent
 

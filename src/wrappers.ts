@@ -43,7 +43,10 @@ export interface ExposeOptions {
   privyToken?: string;
   aipEndpoint?: string;
   gatewayUrl?: string;
+  /** Single-chain shorthand; ignored when chainIds is set. */
   chainId?: number;
+  /** Register on (and poll) multiple chains at once, e.g. [56, 8453, 97, 84532]. */
+  chainIds?: number[];
   currency?: string;
   costModel?: CostModel;
   metadata?: Record<string, unknown>;
@@ -158,6 +161,7 @@ export function exposeAsA2A(options: ExposeOptions, fn: AgentFunction): A2AServe
       gatewayUrl: options.gatewayUrl,
       viaGateway: options.viaGateway,
       chainId: options.chainId,
+      chainIds: options.chainIds,
       currency: options.currency,
       skills: (options.skills ?? []).map(
         (s): SkillConfig => ({ name: s.name, description: s.description }),

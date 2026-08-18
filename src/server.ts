@@ -37,6 +37,7 @@ export interface RegistrationConfig {
   gatewayUrl?: string;
   viaGateway?: boolean;
   chainId?: number;
+  chainIds?: number[];
   currency?: string;
   skills?: SkillConfig[];
   costModel?: CostModel;
@@ -52,6 +53,8 @@ const POLL_INTERVAL_MS = 3_000;
 export class A2AServer {
   private tasks = new Map<string, Task>();
   private agentId = "";
+  /** Per-chain registrations (chain-scoped agent IDs) from registration. */
+  private registrations: Array<{ chainId: number; agentId: string }> = [];
   private httpServer?: http.Server;
   private stopped = false;
 
@@ -96,7 +99,7 @@ export class A2AServer {
       // the platform delivers jobs for via_gateway agents through the gateway
       // job QUEUE (pull), not by pushing to the endpoint.
       if (cfg?.gatewayUrl && (!cfg.endpointUrl || cfg.viaGateway)) {
-        await this.gatewayPollingLoop(cfg);
+        await this.startPolling(cfg);
       }
     })();
   }
@@ -293,54 +296,87 @@ export class A2AServer {
 
   // ----------------------------------------------------------- registration
 
+  /** Chains to register on: chainIds when set, otherwise the single chainId. */
+  private chainList(cfg: RegistrationConfig): number[] {
+    return cfg.chainIds && cfg.chainIds.length > 0 ? cfg.chainIds : [cfg.chainId || 97];
+  }
+
   private async registerWithAIP(cfg: RegistrationConfig): Promise<void> {
     const endpoint = cfg.aipEndpoint || "";
     const client = new PlatformClient(endpoint);
-    console.log(
-      `Registering agent with AIP platform at ${client.baseUrl} (handle erc8004:${cfg.handle})`,
-    );
-    if (cfg.userId) console.log(`  User ID: ${cfg.userId}`);
-    try {
-      const result = await client.registerAgent(
-        {
-          name: cfg.name,
-          handle: cfg.handle,
-          description: cfg.description,
-          endpointUrl: cfg.endpointUrl,
-          skills: cfg.skills,
-          costModel: cfg.costModel ?? { baseCallFee: 0.001 },
-          currency: cfg.currency ?? "USD",
-          metadata: cfg.metadata,
-          jobOfferings: cfg.jobOfferings,
-          jobResources: cfg.jobResources,
-          chainId: cfg.chainId || 97,
-          signature: cfg.signature,
-          message: cfg.message,
-        },
-        { userId: cfg.userId, privyToken: cfg.privyToken },
-      );
-      this.agentId = (result.agent_id as string) || `erc8004:${cfg.handle}`;
-      console.log(`Agent registered successfully: ${this.agentId}`);
-    } catch (e) {
-      // Non-fatal: the service still runs without registration.
-      console.warn(
-        `AIP registration failed (agent will run without registration): ${(e as Error).message}`,
-      );
+    // Register once per chain (token auth): each chain mints its own ERC-8004
+    // identity and returns a distinct chain-scoped agent ID. A failure on one
+    // chain is logged and skipped so the others still come up.
+    const regs: Array<{ chainId: number; agentId: string }> = [];
+    for (const chainId of this.chainList(cfg)) {
+      console.log(`Registering agent on chain ${chainId} (handle erc8004:${cfg.handle})`);
+      try {
+        const result = await client.registerAgent(
+          {
+            name: cfg.name,
+            handle: cfg.handle,
+            description: cfg.description,
+            endpointUrl: cfg.endpointUrl,
+            skills: cfg.skills,
+            costModel: cfg.costModel ?? { baseCallFee: 0.001 },
+            currency: cfg.currency ?? "USD",
+            metadata: cfg.metadata,
+            jobOfferings: cfg.jobOfferings,
+            jobResources: cfg.jobResources,
+            chainId,
+            signature: cfg.signature,
+            message: cfg.message,
+          },
+          { userId: cfg.userId, privyToken: cfg.privyToken },
+        );
+        const agentId = (result.agent_id as string) || `${chainId}:erc8004:${cfg.handle}`;
+        regs.push({ chainId, agentId });
+        console.log(`Agent registered on chain ${chainId}: ${agentId}`);
+      } catch (e) {
+        // Non-fatal: the service still runs without this chain's registration.
+        console.warn(`AIP registration failed on chain ${chainId} (skipping): ${(e as Error).message}`);
+      }
     }
+    this.registrations = regs;
+    const first = regs[0];
+    if (first) this.agentId = first.agentId;
   }
 
   // ---------------------------------------------------------------- polling
 
-  private async gatewayPollingLoop(cfg: RegistrationConfig): Promise<void> {
-    const gatewayUrl = (cfg.gatewayUrl ?? "").replace(/\/+$/, "");
-    // The platform tracks assignments by the chain-scoped agent_id returned
-    // from registration — poll with the same ID, falling back to the handle.
+  /**
+   * Launch the gateway polling loops: one per registered chain in job-queue
+   * mode (each chain has its own chain-scoped agent ID and job queue), or a
+   * single handle-keyed loop in task-queue mode (or as a fallback when there
+   * are no registrations).
+   */
+  private async startPolling(cfg: RegistrationConfig): Promise<void> {
     const useJobQueue = (cfg.jobOfferings?.length ?? 0) > 0 || !!cfg.viaGateway;
-    const pollAgent = useJobQueue ? this.agentId || cfg.handle : cfg.handle;
+    if (!useJobQueue) {
+      await this.pollLoop(cfg, cfg.handle, undefined, false);
+      return;
+    }
+    const regs =
+      this.registrations.length > 0
+        ? this.registrations
+        : [{ chainId: 0, agentId: cfg.handle }]; // fallback: poll by handle
+    await Promise.all(
+      regs.map((r) => this.pollLoop(cfg, r.agentId, r.chainId || undefined, true)),
+    );
+  }
+
+  private async pollLoop(
+    cfg: RegistrationConfig,
+    pollAgent: string,
+    chainId: number | undefined,
+    useJobQueue: boolean,
+  ): Promise<void> {
+    const gatewayUrl = (cfg.gatewayUrl ?? "").replace(/\/+$/, "");
     const pollEndpoint = `${gatewayUrl}/gateway/${useJobQueue ? "jobs" : "tasks"}/poll`;
     const completeEndpoint = `${gatewayUrl}/gateway/${useJobQueue ? "jobs" : "tasks"}/complete`;
     console.log(
-      `Starting Gateway ${useJobQueue ? "JOB" : "TASK"}-QUEUE polling loop for agent ${pollAgent}`,
+      `Starting Gateway ${useJobQueue ? "JOB" : "TASK"}-QUEUE polling loop for agent ${pollAgent}` +
+        (chainId ? ` (chain ${chainId})` : ""),
     );
 
     while (!this.stopped) {
@@ -357,9 +393,11 @@ export class A2AServer {
           await sleep(POLL_INTERVAL_MS);
           continue;
         }
-        console.log(`Received assignment ${assignmentId} from Gateway (job_queue=${useJobQueue})`);
+        console.log(
+          `Received assignment ${assignmentId} from Gateway (agent=${pollAgent}, chain=${chainId ?? ""}, job_queue=${useJobQueue})`,
+        );
         if (useJobQueue) {
-          await this.processGatewayJob(assignmentId, payload, completeEndpoint);
+          await this.processGatewayJob(assignmentId, payload, completeEndpoint, chainId);
         } else {
           await this.processGatewayTask(assignmentId, payload, completeEndpoint);
         }
@@ -374,6 +412,7 @@ export class A2AServer {
     jobId: string,
     jobData: Record<string, unknown>,
     completeEndpoint: string,
+    chainId?: number,
   ): Promise<void> {
     const jobInput = (jobData.job_input as string) ?? "";
     const body: Record<string, unknown> = {
@@ -381,10 +420,12 @@ export class A2AServer {
       agent_id: jobData.agent_id,
       status: "completed",
     };
+    if (chainId) body.chain_id = chainId;
     try {
-      const task = await this.handleMessageSend({
-        message: newMessage("user", randomUUID(), jobInput),
-      });
+      const message = newMessage("user", randomUUID(), jobInput);
+      // Surface the originating chain to the handler via message metadata.
+      if (chainId) message.metadata = { chain_id: chainId };
+      const task = await this.handleMessageSend({ message });
       body.result = { response: extractAgentText(task), task };
     } catch (e) {
       body.status = "failed";
@@ -392,7 +433,7 @@ export class A2AServer {
       body.result = {};
     }
     await postJson(completeEndpoint, body);
-    console.log(`Job ${jobId} completed and result submitted to job queue`);
+    console.log(`Job ${jobId} completed and result submitted to job queue (chain ${chainId ?? ""})`);
   }
 
   private async processGatewayTask(
