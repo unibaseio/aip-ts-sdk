@@ -415,24 +415,21 @@ export class A2AServer {
     chainId?: number,
   ): Promise<void> {
     const jobInput = (jobData.job_input as string) ?? "";
-    const body: Record<string, unknown> = {
-      job_id: jobId,
-      agent_id: jobData.agent_id,
-      status: "completed",
-    };
-    if (chainId) body.chain_id = chainId;
+    let result: Record<string, unknown> = {};
+    let errMsg = "";
     try {
       const message = newMessage("user", randomUUID(), jobInput);
       // Surface the originating chain to the handler via message metadata.
       if (chainId) message.metadata = { chain_id: chainId };
       const task = await this.handleMessageSend({ message });
-      body.result = { response: extractAgentText(task), task };
+      result = { response: extractAgentText(task), task };
     } catch (e) {
-      body.status = "failed";
-      body.error = (e as Error).message;
-      body.result = {};
+      errMsg = (e as Error).message;
     }
-    await postJson(completeEndpoint, body);
+    await postJson(
+      completeEndpoint,
+      jobCompletionBody(jobId, jobData.agent_id, result, chainId, errMsg),
+    );
     console.log(`Job ${jobId} completed and result submitted to job queue (chain ${chainId ?? ""})`);
   }
 
@@ -501,6 +498,34 @@ export function extractAgentText(task: Task): string {
     }
   }
   return "";
+}
+
+/**
+ * Build the POST /gateway/jobs/complete request body. When errMsg is non-empty
+ * the job is reported failed with an empty result; chain_id is included only for
+ * multi-chain (chainId set). This is the SDK→gateway wire contract, mirrored
+ * across the Go/Python/TS SDKs (see contracts/fixtures/job_completion.json).
+ */
+export function jobCompletionBody(
+  jobId: string,
+  agentId: unknown,
+  result: Record<string, unknown>,
+  chainId: number | undefined,
+  errMsg: string,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    job_id: jobId,
+    agent_id: agentId,
+    result,
+    status: "completed",
+  };
+  if (chainId) body.chain_id = chainId;
+  if (errMsg) {
+    body.status = "failed";
+    body.error = errMsg;
+    body.result = {};
+  }
+  return body;
 }
 
 async function postJson(url: string, body: unknown): Promise<void> {

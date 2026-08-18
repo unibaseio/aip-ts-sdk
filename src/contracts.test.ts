@@ -8,6 +8,7 @@ import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AgentConfig, AgentJobOffering } from "./types.js";
 import { toAgentCard, toRegistrationMap } from "./types.js";
+import { jobCompletionBody } from "./server.js";
 
 const FIXTURES = path.join(__dirname, "..", "contracts", "fixtures");
 
@@ -81,5 +82,16 @@ describe("cross-language wire contract", () => {
 
   it("job_offering matches the fixture", () => {
     expect(normalize(jobOffering())).toEqual(readFixture("job_offering"));
+  });
+
+  it("job_completion (multi-chain) matches the fixture", () => {
+    const body = jobCompletionBody(
+      "job-1",
+      "97:reg:demo",
+      { response: "hello", task: {} },
+      97,
+      "",
+    );
+    expect(normalize(body)).toEqual(readFixture("job_completion"));
   });
 });

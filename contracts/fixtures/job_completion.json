@@ -1,0 +1,10 @@
+{
+  "job_id": "job-1",
+  "agent_id": "97:reg:demo",
+  "status": "completed",
+  "chain_id": 97,
+  "result": {
+    "response": "hello",
+    "task": {}
+  }
+}
